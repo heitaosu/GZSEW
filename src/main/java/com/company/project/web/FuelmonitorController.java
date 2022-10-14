@@ -1,13 +1,16 @@
 package com.company.project.web;
 
+import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.util.StringUtils;
 import com.company.project.configurer.ProjectConfig;
 import com.company.project.core.*;
 import com.company.project.model.*;
 import com.company.project.service.FuelRecordService;
 import com.company.project.service.WarnRecordService;
+import com.company.project.util.DateUtil;
 import com.company.project.util.JwtUtil;
-import com.company.project.util.SmbUtil;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +18,13 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,6 +46,7 @@ public class FuelmonitorController {
     private WarnRecordService warnRecordService;
 
     private ExecutorService threadPool = Executors.newFixedThreadPool(5);
+    private final String ONE_BLANK_STR = " ";
     //
     private String[] btn_on_flag = new String[]{"True","False"};
     private String btn_connect_flag = ":";
@@ -109,6 +118,7 @@ public class FuelmonitorController {
                 || FuelState.FUEL_STATE_12.getState() == type
                 || FuelState.FUEL_STATE_13.getState() == type
                 || FuelState.FUEL_STATE_14.getState() == type
+                || FuelState.FUEL_STATE_15.getState() == type
                 || FuelState.FUEL_STATE_18.getState() == type
                 || FuelState.FUEL_STATE_19.getState() == type){
             // 手动加油启停状态单独处理
@@ -177,24 +187,29 @@ public class FuelmonitorController {
      */
     @PostMapping("/scanstart.json")
     public Result  scanstart(HttpServletRequest request,@RequestParam(required=true) String code,@RequestParam(required=true) String sequenceCode) throws ServiceException{
-        if (!NumberUtils.isNumber(code) || !NumberUtils.isNumber(sequenceCode)){
+        if (!NumberUtils.isParsable(code) || !NumberUtils.isParsable(sequenceCode)){
             return ResultGenerator.genFailResult("扫码的订单ID或者序列号不合法,必须全部为数字");
         }
-        if (code.length() < 8 || code.length() >15){
-            return ResultGenerator.genFailResult("扫码信息不正确,请重新扫码,订单ID长度必须是8-15位");
+
+        if (code.length() < 6 || code.length() > 10){
+            return ResultGenerator.genFailResult("扫码信息不正确,请重新扫码,工单号长度必须是6-10位");
         }
-        if (sequenceCode.length() < 12 || sequenceCode.length() >20){
+        if (sequenceCode.length() < 12 || sequenceCode.length() > 20){
             return ResultGenerator.genFailResult("扫码信息不正确,请重新扫码,序列号长度必须是12-20位");
         }
-        String content = fuelRecordService.getReadRemoteFileContent(code);
+
+        String content = null;
+
+       /* String content = fuelRecordService.getReadRemoteFileContent(code);
         if (StringUtils.isEmpty(content)){
             return ResultGenerator.genFailResult("系统中的订单不存在,请检查共享文件盘中文件是否存在,订单ID编号为:" + code);
-        }
+        }*/
         FuelRecord fuelRecord = fuelRecordService.stringTransformBeanV2(content,code);
+        fuelRecord.setSequenceCode(sequenceCode);
 
-        if (!fuelRecordService.compareSeq(sequenceCode,fuelRecord.getSequenceCode())){
+        /*if (!fuelRecordService.compareSeq(sequenceCode,fuelRecord.getSequenceCode())){
             return ResultGenerator.genFailResult("扫码输入的序列号与对应的订单号信息中的序列号对比不正确，请检查或重新扫码");
-        }
+        }*/
         this.scanIsEndMsg();
         String token = request.getHeader("access_token");
         String userId = JwtUtil.getUserId(token);
@@ -211,12 +226,14 @@ public class FuelmonitorController {
         }else {//如果以上两个都没有则注油目标值设定为默认值
             reaVal = Double.valueOf(projectConfig.getSYSTEM_INIT_VAL_53_NUM());
         }
-        fuelRecord.setFuelSetVal(reaVal);
+        fuelRecord.setFuelSetVal(140.0);
         log.error("set 注油目标值为={}",fuelRecord.getFuelSetVal());
         fuelRecordService.scanStart(code,Integer.valueOf(userId),fuelRecord);
 
-        //设定注油目标值
-        globalCache.publish(ProjectConstant.BTN_EVENT_CHANNEL, FuelValue.FUEL_STATE_53.getSwitchKey() + btn_connect_flag + fuelRecord.getFuelSetVal());
+        //设定注油目标值(需求变更不需要设定注油目标值)
+        //globalCache.publish(ProjectConstant.BTN_EVENT_CHANNEL, FuelValue.FUEL_STATE_53.getSwitchKey() + btn_connect_flag + fuelRecord.getFuelSetVal());
+        //globalCache.publish(ProjectConstant.ALARM_EVENT_CHANNEL, FuelValue.FUEL_STATE_53.getSwitchKey() + btn_connect_flag + fuelRecord.getFuelSetVal());
+
         //扫码加油开始按钮打开
         globalCache.publish(ProjectConstant.BTN_EVENT_CHANNEL,FuelState.FUEL_STATE_13.getSwitchKey() + btn_connect_flag + btn_on_flag[0]);
 
@@ -253,7 +270,8 @@ public class FuelmonitorController {
 
         if(!fuelRecordService.scanIsEnd()){
             // 注油目标值
-            Object fuel_state_204 = globalCache.get(FuelState.PAGE_CODE_204.getSwitchKey());
+            //Object fuel_state_204 = globalCache.get(FuelState.PAGE_CODE_204.getSwitchKey());
+            Object fuel_state_204 = globalCache.get(FuelValue.FUEL_STATE_53.getSwitchKey());
             if (fuel_state_204 != null){
                 list.add(String.format(INIT_VAL_FORMAT,FuelValue.FUEL_STATE_53.getState(),fuel_state_204));
             }
@@ -362,41 +380,67 @@ public class FuelmonitorController {
         return ResultGenerator.genSuccessResult(list);
     }
 
+    /**
+     * 查询加油记录
+     * @return
+     */
+    @GetMapping("/listRecord.json")
+    public Result listRecord(@RequestParam(defaultValue = "1") Integer page, @RequestParam(defaultValue = "10") Integer size,@RequestParam(required=true)Long createTimeStart, @RequestParam(required=true)Long createTimeEnd,String workOrder,String sequenceCode){
+        PageHelper.startPage(page, size);
+        List<FuelRecordDO> list =  fuelRecordService.findByCondition(createTimeStart,createTimeEnd,workOrder,sequenceCode);
+        PageInfo pageInfo = new PageInfo(list);
+        return ResultGenerator.genSuccessResult(pageInfo);
+    }
+
+    /**
+     * 加油记录导出
+     * @return
+     */
+    @GetMapping("/exportRecord.json")
+    public void exportRecord(HttpServletRequest request,HttpServletResponse response, @RequestParam(required=true)Long createTimeStart, @RequestParam(required=true)Long createTimeEnd,String workOrder,String sequenceCode){
+        ServletOutputStream outputStream = null;
+        try {
+            String timemis = DateUtil.DateToString(new Date(),DateUtil.DateStyle.YYYYMMDDHHMMSS);
+            //String filename = "加油记录-"+timemis + ".xlsx";
+            //response.addHeader("Content-Disposition", "attachment;filename=" + filename);
+            //response.setContentType("application/vnd.ms-excel;charset=gb2312");
+
+            String fileName = URLEncoder.encode("加油记录-"+timemis + ".xlsx", "UTF-8");
+            response.setCharacterEncoding("utf-8");
+            response.setContentType("application/octet-stream");
+            response.setHeader("Content-disposition", "attachment;filename=" + fileName);
+
+            //响应到客户端
+            outputStream = response.getOutputStream();
+            List<FuelRecordDO> list = fuelRecordService.findByCondition(createTimeStart,createTimeEnd,workOrder,sequenceCode);
+            if (!CollectionUtils.isEmpty(list)) {
+                for (FuelRecordDO fr : list) {
+                    if (StringUtils.isEmpty(fr.getCreateTime()) || StringUtils.isEmpty(fr.getFuelEnd()) || StringUtils.isEmpty(fr.getFuelStart())) {
+                        continue;
+                    }
+                    String endTime = fr.getCreateTime() + ONE_BLANK_STR + fr.getFuelEnd();
+                    String startTime = fr.getCreateTime() + ONE_BLANK_STR + fr.getFuelStart();
+                    String fuelTime = DateUtil.getIntervaHMS(DateUtil.StringToDate(endTime, DateUtil.DateStyle.YYYY_MM_DD_HH_MM_SS), DateUtil.StringToDate(startTime, DateUtil.DateStyle.YYYY_MM_DD_HH_MM_SS));
+                    fr.setFuelTime(fuelTime);
+                }
+            }
+            EasyExcel.write(outputStream, FuelRecordDO.class).sheet("加油记录").doWrite(list);
+        } catch (Exception e) {
+            log.error("exportRecord 导出出错：{}", e.getMessage());
+        }finally {
+            if (outputStream != null){
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     public void scanIsEndMsg() throws ServiceException {
         if (!fuelRecordService.scanIsEnd()){
             throw new ServiceException("本次扫码注油还未结束,不允许此操作,请等待当前注油结束,如已结束请按扫码加油结束按钮结束本次注油");
         }
-    }
-
-    /**
-     * 测试读取共享文件
-     * @param request
-     * @param fileName  共享文件的名称
-     * @return
-     */
-    @GetMapping("/testReadRemote.json")
-    public Result  testReadRemote(HttpServletRequest request, @RequestParam(required=true) String fileName) throws Exception {
-        String removeDir = "\\E25\\025\\@1\\";
-        // System.out.println(SmbUtil.SMB_REMOTE_HOST+":"+SmbUtil.SMB_USERNAME+":"+SmbUtil.SMB_PASSWORD+":"+SmbUtil.SMB_SHARE_PATH);
-        //SmbUtil.listFile(SmbUtil.SMB_REMOTE_HOST,SmbUtil.SMB_USERNAME,SmbUtil.SMB_PASSWORD,SmbUtil.SMB_SHARE_PATH,"E25");
-        //String content = SmbUtil.readOneFileString(SmbUtil.SMB_REMOTE_HOST,SmbUtil.SMB_USERNAME,SmbUtil.SMB_PASSWORD,SmbUtil.SMB_SHARE_PATH,projectConfig.getSystemShareRemoteDir(),fileName);
-        String content = SmbUtil.readOneFileOnDirTree(projectConfig.getSMB_READ_REMOTE_HOST(),projectConfig.getSMB_READ_USERNAME(),projectConfig.getSMB_READ_PASSWORD(),projectConfig.getSMB_READ_SHARE_PATH(),removeDir,fileName);
-        System.out.println("content="+content);
-        return ResultGenerator.genSuccessResult(content);
-    }
-
-    /**
-     * 测试写文件到共享文件
-     * @param request
-     * @param fileAllName  本地文件全限地址
-     * @return
-     */
-    @GetMapping("/testWriteRemote.json")
-    public Result  testWriteRemote(HttpServletRequest request, String fileAllName) throws Exception {
-        String removeDir = "\\SC\\Public\\18 注油机\\";
-        SmbUtil.uploadFile(projectConfig.getSMB_WRITE_REMOTE_HOST(), projectConfig.getSMB_WRITE_USERNAME(),projectConfig.getSMB_WRITE_PASSWORD(),projectConfig.getSMB_WRITE_SHARE_PATH(), removeDir,"D:/7888888888.001");
-        //SmbFileUtil.uploadFile(null,"D:/7888888888.001");
-        return ResultGenerator.genSuccessResult();
     }
 }

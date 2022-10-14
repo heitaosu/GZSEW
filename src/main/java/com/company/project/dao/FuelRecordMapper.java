@@ -10,5 +10,7 @@ public interface FuelRecordMapper extends Mapper<FuelRecord> {
 
     public List<FuelRecordDO> findByCreateTime(long createTimeStart, long createTimeEnd);
 
+    public List<FuelRecordDO> findByCondition(long createTimeStart, long createTimeEnd, String workOrder, String sequenceCode);
+
     public List<FuelRecordDO> findByWorkOrder(String workOrder);
 }

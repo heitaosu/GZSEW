@@ -1,4 +1,20 @@
 # 注油系统API文档
+部署过程
+
+1、更改环境
+在application.properties文件中改
+dev表示本地环境
+test表示测试环境-腾讯云
+prod正式环境-部署到用户服务器
+
+2、打包
+mvn clean package install -DskipTests
+
+3、将war文件改名 crm.war
+
+4、将crm.war放到/opt/tomcat8/webapps目录下(测试环境)
+
+5、重新启动tomcat
 
 标签（空格分隔）： api
 

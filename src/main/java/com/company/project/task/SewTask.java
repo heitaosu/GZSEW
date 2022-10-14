@@ -1,25 +1,16 @@
 package com.company.project.task;
 
-import com.alibaba.excel.EasyExcel;
-import com.alibaba.excel.support.ExcelTypeEnum;
-import com.alibaba.excel.util.StringUtils;
 import com.company.project.configurer.ProjectConfig;
 import com.company.project.core.ProjectConstant;
-import com.company.project.model.FuelRecordDO;
 import com.company.project.service.FuelRecordService;
 import com.company.project.util.DateUtil;
-import com.company.project.util.FileUtil;
-import com.company.project.util.SmbUtil;
 import com.company.project.websocket.PushService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
-import java.io.File;
 import java.util.Date;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -65,7 +56,7 @@ public class SewTask {
      * 每隔10分钟执行一次 fixedDelay = 1000*60*10
      * 生成扫码加油的记录Excel(历史所有生成一张表)
      */
-    @Scheduled(fixedDelay = 600000)
+/*    @Scheduled(fixedDelay = 600000)
     public void writeExcel() throws Exception {
         log.error("生成扫码加油的记录Excel start");
         Date yesterday = DateUtil.addDay(new Date(),-1);
@@ -101,5 +92,5 @@ public class SewTask {
         // 上传文件到共享盘
         SmbUtil.uploadFile(projectConfig.getSMB_WRITE_REMOTE_HOST(), projectConfig.getSMB_WRITE_USERNAME(),projectConfig.getSMB_WRITE_PASSWORD(),projectConfig.getSMB_WRITE_SHARE_PATH(), projectConfig.getSMB_WRITE_SHARE_BASEDIR() + projectConfig.getSYSTEM_SEW_DOMAIN_NAME(),filePath+fileName);
         log.error("生成扫码加油的记录Excel end");
-    }
+    }*/
 }

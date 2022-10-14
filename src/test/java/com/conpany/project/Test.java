@@ -1,5 +1,7 @@
 package com.conpany.project;
 
+import org.apache.commons.lang3.math.NumberUtils;
+
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -12,6 +14,15 @@ public class Test {
     }
 
     public static void main(String[] args) {
+
+        String code = "611411 ";
+        if (code.length() < 6 || code.length() > 12){
+            System.out.println("扫码信息不正确,请重新扫码,工单号长度必须是6-10位,code:"+code);
+        }
+
+        boolean sss = NumberUtils.isNumber("061 1895");
+        boolean sss1 = NumberUtils.isParsable("061 1895");
+        System.out.println(sss+":"+sss1);
 
         String fileContent = "1   X2FS140e/HU/B                                                                                                                                                                                                                                                 0.99     25.8077346705.0001.21.47      CLP HC 320                                                                                                                                                                                                                                                                                                        1651437.0    203.2532          160.00         2.84    7.07        7337    160.00  456.00  IM:M1F1                                            0       40      eof\n";
 

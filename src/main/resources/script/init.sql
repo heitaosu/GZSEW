@@ -1,5 +1,8 @@
+DROP DATABASE sew;
+CREATE DATABASE `sew` CHARACTER SET utf8 COLLATE utf8_general_ci;
+
 # 创建加油记录表
-create table sew.fuel_record
+create table fuel_record
 (
     id            int auto_increment
         primary key,
@@ -13,13 +16,16 @@ create table sew.fuel_record
     fuel_real_val double       null comment '注油量实际值',
     tag_real_val  double       null comment '上传到铭牌的注油量',
     oper_id       int          null comment '操作员用户id',
-    create_time   bigint       null comment '创建时间'
+    create_time   bigint       null comment '创建时间',
+    oil_type      varchar(255) null
 )
     comment '加油记录表';
 
+create index indexName_create_time
+    on fuel_record (create_time);
 
-# 创建用户表
-create table sew.user
+
+create table user
 (
     id            int auto_increment
         primary key,
@@ -31,18 +37,33 @@ create table sew.user
     state         int default 1 null comment '状态 0:无效(已删除)  1:有效(未删除)'
 );
 
-# 添加索引
-create index idx_create_time
-    on sew.fuel_record (create_time);
+
+create table warn_record
+(
+    id          int auto_increment
+        primary key,
+    warn_type   bigint       null comment '告警类型',
+    warn_msg    varchar(255) null comment '告警内容',
+    create_time bigint       null comment '创建时间'
+)
+    comment '告警记录表';
 
 delete from sew.user where 1=1;
 delete  from sew.fuel_record where 1=1;
 
 # 添加管理员账号
 insert into sew.user (id, username, password, real_name, user_level, register_date, state)
-values  (1, 'sewadmin001', 'sew1qaz2wsx', 'sewadmin001', 0, '1652089474839', 1);
-insert into sew.user (id, username, password, real_name, user_level, register_date, state)
-values  (1, 'root', 'sew1qaz2wsx', '系统管理员', 0, '1652089474839', 1);
+values  (1, 'sewadmin001', 'sew1qaz2wsx', 'sewadmin001', 0, '1652089474839', 1),
+        (2, 'suchao', '123456', 'sc', 0, '1652089474839', 1),
+        (3, 'suye', '123456', 'sy', 1, '355555', 0),
+        (4, 'zhangshan', '123456', '张山', 1, '1658320587617', 1);
 
+######
+#redis 订阅
 
+SUBSCRIBE alarm.event.channel;
+SUBSCRIBE btn.event.channel;
+
+#redis 发布 实时注油量
+PUBLISH alarm.event.channel val_62_12
 

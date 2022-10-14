@@ -919,7 +919,7 @@ public class DateUtil {
         YYYY_MM_DD_HH_MM("yyyy-MM-dd HH:mm", false),
         YYYY_MM_DD_HH_MM_SS("yyyy-MM-dd HH:mm:ss", false),
         YYYYMM("yyyyMM", false),
-
+        YYYYMMDDHHMMSS("yyyyMMddHHmmss", false),
         YYYY_MM_EN("yyyy/MM", false),
         YYYY_MM_DD_EN("yyyy/MM/dd", false),
         YYYY_MM_DD_HH_MM_EN("yyyy/MM/dd HH:mm", false),
@@ -1069,6 +1069,8 @@ public class DateUtil {
 
     public static void main(String[] args) {
 
+        String ss1 = DateUtil.DateToString(new Date(),DateUtil.DateStyle.YYYYMMDDHHMMSS);
+        System.out.println(ss1);
         Date mouthDay =  DateUtil.StringToDate(getFirstDayOfMonth(5),DateStyle.YYYY_MM_DD_HH_MM_SS);
 
         String sss = getIntervaHMS(new Date(1651366890000l),new Date(1651273215000l));

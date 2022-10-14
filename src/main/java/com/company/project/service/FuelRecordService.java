@@ -52,7 +52,15 @@ public interface FuelRecordService extends Service<FuelRecord> {
 
     public Integer getScanOperId();
 
+    /**
+     * 查找加油记录
+     * @param createTimeStart
+     * @param createTimeEnd
+     * @return
+     */
     public List<FuelRecordDO> findByCreateTime(long createTimeStart, long createTimeEnd);
+
+    public List<FuelRecordDO> findByCondition(long createTimeStart, long createTimeEnd,String workOrder,String sequenceCode);
 
     public FuelRecord stringTransformBeanV2(String fileContent,String code) throws ServiceException;
 

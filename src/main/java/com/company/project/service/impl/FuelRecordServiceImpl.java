@@ -77,11 +77,11 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
         scan_start_date = new Date();
         scan_oper_id = operId;
 
-        globalCache.set(FuelState.PAGE_INSTALLTYPE_200.getSwitchKey(),fuelRecord.getInstallType());
-        globalCache.set(FuelState.PAGE_MODEL_201.getSwitchKey(),fuelRecord.getModelType());
+        //globalCache.set(FuelState.PAGE_INSTALLTYPE_200.getSwitchKey(),fuelRecord.getInstallType());
+        //globalCache.set(FuelState.PAGE_MODEL_201.getSwitchKey(),fuelRecord.getModelType());
         globalCache.set(FuelState.PAGE_SEQUENCECODE_202.getSwitchKey(),fuelRecord.getSequenceCode());
         globalCache.set(FuelState.PAGE_CODE_203.getSwitchKey(),scanCode);
-        globalCache.set(FuelState.PAGE_CODE_204.getSwitchKey(),String.valueOf(fuelRecord.getFuelSetVal()));
+        globalCache.set(FuelState.PAGE_CODE_204.getSwitchKey(), "140");
     }
 
     @Override
@@ -133,6 +133,11 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
         return fuelRecordMapper.findByCreateTime(createTimeStart,createTimeEnd);
     }
 
+    @Override
+    public List<FuelRecordDO> findByCondition(long createTimeStart, long createTimeEnd, String workOrder, String sequenceCode) {
+        return fuelRecordMapper.findByCondition(createTimeStart,createTimeEnd,workOrder, sequenceCode);
+    }
+
     /**
      * 根据工单号查询历史的加油记录
      * @param workOrder
@@ -160,10 +165,10 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
         String fileContent = null;
         try {
             code = getScanCode();
-            fileContent = getReadRemoteFileContent(code);
+            /*fileContent = getReadRemoteFileContent(code);
             if (StringUtils.isEmpty(fileContent)){
                 throw new ServiceException("该订单号不存在,请检查远程订单文件是否存在,订单id=" + code);
-            }
+            }*/
         }catch (Exception e){
             throw new ServiceException("读取订单信息失败，请检查网络连接是否正常，或联系管理员");
         }
@@ -171,6 +176,7 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
         FuelRecord fuelRecord = null;
         try {
             fuelRecord = stringTransformBeanV2(fileContent, code);
+
             Double svval = Double.valueOf(globalCache.get(FuelValue.FUEL_STATE_53.getSwitchKey()).toString());
             nf.setMaximumFractionDigits(1);
             //注油量设定值
@@ -179,7 +185,6 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
         }catch (Exception e){
             throw new ServiceException("订单信息中的数据转化异常，请检查近期订单信息格式是否已变更或联系管理员");
         }
-
         List<FuelRecordDO> list = this.findByWorkOrder(fuelRecord.getWorkOrder()+"");
         // 如果同一订单下  已经有加油记录则不用写铭牌文件了
         if (CollectionUtils.isEmpty(list)){
@@ -192,13 +197,13 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
             }catch (Exception e){
                 throw new ServiceException("上传铭牌打印的信息写到本地电脑出错，请检查文件是否被占用");
             }
-            try {
+            /*try {
                 String localAllFileName = projectConfig.getSYSTEM_SEW_WRITE_FILE_DIR() + fileName;
                 //将本地的铭牌信息同步到共享文件盘
                 SmbUtil.uploadFile(projectConfig.getSMB_WRITE_REMOTE_HOST(), projectConfig.getSMB_WRITE_USERNAME(),projectConfig.getSMB_WRITE_PASSWORD(),projectConfig.getSMB_WRITE_SHARE_PATH(), projectConfig.getSMB_WRITE_SHARE_BASEDIR() + REMOTE_WRITE_MP_DIR,localAllFileName);
             }catch (Exception e){
                 throw new ServiceException("上传铭牌打印的信息到共享盘时出错,请检查本地网络连接或者共享盘是否正常");
-            }
+            }*/
         }
         fuelRecord.setFuelStart(scan_start_date.getTime());
         this.save(fuelRecord);
@@ -286,7 +291,8 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
             //上传到铭牌的注油量
             fuelRecord.setTagRealVal(Double.valueOf(nf.format(dval)));
         }catch (Exception e){
-            throw new ServiceException("获取缓存中的实际注油量不正确,请检查,如果强制完成请尝试修改实际注油量后,再次点击次按钮完成");
+            log.error("获取缓存中的实际注油量不正确,请检查,如果强制完成请尝试修改实际注油量后,再次点击次按钮完成");
+            //throw new ServiceException("获取缓存中的实际注油量不正确,请检查,如果强制完成请尝试修改实际注油量后,再次点击次按钮完成");
         }
         fuelRecord.setCreateTime(System.currentTimeMillis());
         fuelRecord.setFuelStart(System.currentTimeMillis());
@@ -302,7 +308,8 @@ public class FuelRecordServiceImpl extends AbstractService<FuelRecord> implement
             // 油品型号
             fuelRecord.setOilType(fileContent.substring(297,327).trim());
         }catch (Exception e){
-            throw new ServiceException("获取共享盘中的订单信息[安装方式、型号、序列号]不正确,请检查共享盘中的订单信息或者订单信息或格式是否已经变更");
+            log.error("安装方式、型号、序列号等信息不正确");
+            //throw new ServiceException("获取共享盘中的订单信息[安装方式、型号、序列号]不正确,请检查共享盘中的订单信息或者订单信息或格式是否已经变更");
         }
         try {
             //注油量设定值（从订单中读取的如果有的话）

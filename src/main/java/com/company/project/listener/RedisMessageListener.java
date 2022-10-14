@@ -1,6 +1,5 @@
 package com.company.project.listener;
 
-import com.company.project.core.IGlobalCache;
 import com.company.project.core.ProjectConstant;
 import com.company.project.model.FuelAlarm;
 import com.company.project.model.FuelState;
@@ -32,15 +31,9 @@ public class RedisMessageListener {
 
     @Autowired
     private PushService pushService;
-
     @Autowired
     private WarnRecordService warnRecordService;
-
-    @Autowired
-    private IGlobalCache globalCache;
-
     public static NumberFormat nf = NumberFormat.getNumberInstance();
-
     private ExecutorService threadPool = Executors.newFixedThreadPool(10);
 
     @Bean
@@ -105,36 +98,18 @@ public class RedisMessageListener {
 
                 for (FuelValue val : FuelValue.values()){
                     if (val.getSwitchKey().equals(msgs[0])){
-
-                    /*Object msv =  msgs[1];
-                    nf.setMaximumFractionDigits(3);
-
-
-                    Object obj = globalCache.get(FuelState.PAGE_CODE_205.getSwitchKey());
-                    if (obj != null){
-                        Double dval = null;
-                        dval = Double.valueOf(obj.toString());
-
-                        //注油量实际值
-                        dval = Double.valueOf(nf.format(dval));
-                        globalCache.set(FuelState.PAGE_CODE_205.getSwitchKey(),dval);
-                    }
-*/
-
                         String msg = String.format(ProjectConstant.VAL_ARRAY[2], val.getState(),msgs[1]);
-                        //log.error("msg={},State={}",msg,val.getState());
+                        log.error("msg={},State={}",msg,val.getState());
                         pushService.pushMsgToAll(msg);
                         if (FuelValue.FUEL_STATE_61.getState() != val.getState()){
                         }
                     }
                 }
-
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
     }
-
 
     @Bean
     public MessageListenerAdapter listenerAdapter(){
@@ -159,6 +134,7 @@ public class RedisMessageListener {
                 if (btn.getSwitchKey().equals(msgs[0])){
                     String v = Boolean.valueOf(msgs[1]) ?  "1" : "0";
                     String msg = String.format(ProjectConstant.VAL_ARRAY[1], btn.getState(),v);
+                    log.error("msg={},v={}",msg, v);
                     pushService.pushMsgToAll(msg);
                 }
             }

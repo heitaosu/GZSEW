@@ -17,7 +17,7 @@ public class Application extends SpringBootServletInitializer {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
 
-        Application.removeLocalFile();
+        //Application.removeLocalFile();
     }
 
     public static void removeLocalFile() {
