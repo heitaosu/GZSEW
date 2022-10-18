@@ -12,6 +12,7 @@ import java.io.File;
 @SpringBootApplication
 @EnableCaching
 @EnableScheduling
+//@EnableKafka()
 public class Application extends SpringBootServletInitializer {
 
     public static void main(String[] args) {
